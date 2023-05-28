@@ -3,6 +3,7 @@ using AwesomeDevEvents.Api.Interfaces;
 using AwesomeDevEvents.Api.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AwesomeDevEvents.Api.Controllers
 {
@@ -30,7 +31,9 @@ namespace AwesomeDevEvents.Api.Controllers
         [HttpGet("{id}")]
         public IActionResult GetById(Guid id)
         {
-            var devEvent = _dbContext.DevEvents.SingleOrDefault(d => d.Id == id);
+            var devEvent = _dbContext.DevEvents
+                .Include(d => d.Speakers)
+                .SingleOrDefault(d => d.Id == id);
             if(devEvent == null) return NotFound();
             return Ok(devEvent);
 
@@ -39,6 +42,8 @@ namespace AwesomeDevEvents.Api.Controllers
         [HttpPost]
         public IActionResult Post(DevEvent devEvent) {
             _dbContext.DevEvents.Add(devEvent);
+            //Dados como adicionar ou editar, deletar precisam salvar alterações
+            _dbContext.SaveChanges();
             //Objeto criado e execute a ação, acesse getById e passa o e o objeto
             return CreatedAtAction(nameof(GetById), new { id = devEvent.Id}, devEvent );
         }
@@ -55,7 +60,8 @@ namespace AwesomeDevEvents.Api.Controllers
             updateDevEventProp.EndDate = devEvent.EndDate;
 
             devEventUpdated.Update(updateDevEventProp);
-
+            _dbContext.Update(devEventUpdated);
+            _dbContext.SaveChanges();
             return NoContent();
         }
 
@@ -63,16 +69,22 @@ namespace AwesomeDevEvents.Api.Controllers
         public IActionResult Delete(Guid id) {
             var devEvent = _dbContext.DevEvents.SingleOrDefault(d => d.Id == id);
             if (devEvent == null) return NotFound();
+            //Não apaga de fato, pois é interessante manter o registro por questão burocrática
             devEvent.Delete();
+            _dbContext.SaveChanges();
             return NoContent();
         }
 
         [HttpPost("{id}/speakers")]
         public IActionResult PostSpeaker(Guid id, DevEventSpeaker devEventSpeaker)
-        {
-            var devEvent = _dbContext.DevEvents.SingleOrDefault(d => d.Id == id);
-            if(devEvent == null) return NotFound();
-            devEvent.Speakers.Add(devEventSpeaker);
+        {   
+            devEventSpeaker.DevEventId = id;
+
+            //Existe algum devEvent?
+            var devEvent = _dbContext.DevEvents.Any(d => d.Id == id);
+            if(!devEvent) return NotFound();
+            _dbContext.DevEventSpeakers.Add(devEventSpeaker);
+            _dbContext.SaveChanges();
             return NoContent();
         }
 

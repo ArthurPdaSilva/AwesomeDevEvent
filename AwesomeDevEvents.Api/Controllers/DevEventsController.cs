@@ -67,5 +67,15 @@ namespace AwesomeDevEvents.Api.Controllers
             return NoContent();
         }
 
+        [HttpPost("{id}/speakers")]
+        public IActionResult PostSpeaker(Guid id, DevEventSpeaker devEventSpeaker)
+        {
+            var devEvent = _dbContext.DevEvents.SingleOrDefault(d => d.Id == id);
+            if(devEvent == null) return NotFound();
+            devEvent.Speakers.Add(devEventSpeaker);
+            return NoContent();
+        }
+
+
     }
 }
